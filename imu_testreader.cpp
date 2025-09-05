@@ -25,7 +25,9 @@
 //SCLK (Serial CLock, 23, SCLK0)
 //CS (Either 24 or 26)
 
+double acc_lsb_to_g;
 
+double gyro_lsb_to_degsec;
 
 // SDA - MOSI  ; DO - MISO0  ; SCL - SCLK0  ; CS - CE0
 
@@ -36,7 +38,7 @@ void initSPI() {
     int bits_per_word = 8;
     int speed = 1000000;
 
-    f_dev = open("/dev/spidev0.0", O_RDWR);
+    int f_dev = open("/dev/spidev0.0", O_RDWR);
     if (f_dev < 0) {
         std::cout<< "ERR: Failed to open SPI communication on /dev/spidev0.0";
     }
@@ -133,6 +135,7 @@ int setAccConfig(int config_num){
 
 int setGyroConfig(int config_num){
     int status;
+
     uint8_t GYRO_CONFIG_ = 0x11;
     switch(config_num){
         case 0:  // range = +- 250 deg/s
@@ -159,31 +162,38 @@ int setGyroConfig(int config_num){
 }
 
 void fetchData(){
-    int16_t X, Y, Z;
+    //temporarily changed x-> nx to avoid non defined errors
+    int16_t X, Y, Z, nX, nY, nZ;
     X = readRegister(0x29) << 8 | readRegister(0x28);
     Y = readRegister(0x2B) << 8 | readRegister(0x2A);
     Z = readRegister(0x2D)  << 8 | readRegister(0x2C);
+    float accX;
+    float accY;
+    float accZ;
+    float gyroX;
+    float gyroY;
+    float gyroZ;
 
-
+/*
     accX = ((float)X) * acc_lsb_to_g / 1000 - accXoffset;
     accY = ((float)Y) * acc_lsb_to_g / 1000 - accYoffset;
     accZ = (!upsideDownMounting - upsideDownMounting) * ((float)Z) * acc_lsb_to_g / 1000 - accZoffset;
-
-    X = readRegister(0x23) << 8 | readRegister(0x22);
-    Y = readRegister(0x25) << 8 | readRegister(0x24);
-    Z = readRegister(0x27) << 8 | readRegister(0x26);
-
+*/
+    nX = readRegister(0x23) << 8 | readRegister(0x22);
+    nY = readRegister(0x25) << 8 | readRegister(0x24);
+    nZ = readRegister(0x27) << 8 | readRegister(0x26);
+/*
     gyroX = ((float)X) * gyro_lsb_to_degsec / 1000- gyroXoffset;
     gyroY = ((float)Y) * gyro_lsb_to_degsec / 1000 - gyroYoffset;
     gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000 - gyroZoffset;
-
+*/
     //print data
-    std::cout << "Accel: X=" << accX
-                  << " g, Y=" << accY
-                  << " g, Z=" << accZ << " g | "
-                  << "Gyro: X=" << gyroX
-                  << " dps, Y=" << gyroY
-                  << " dps, Z=" << gyroZ << " dps"
+    std::cout << "Accel: X=" << X
+                  << " g, Y=" << Y
+                  << " g, Z=" << Z << " g | "
+                  << "Gyro: X=" << nX
+                  << " dps, Y=" << nY
+                  << " dps, Z=" << nZ << " dps"
                   << std::endl;
 }
 
