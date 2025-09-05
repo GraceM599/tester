@@ -26,7 +26,7 @@
 //CS (Either 24 or 26)
 
 double acc_lsb_to_g;
-
+int f_dev;
 double gyro_lsb_to_degsec;
 
 // SDA - MOSI  ; DO - MISO0  ; SCL - SCLK0  ; CS - CE0
@@ -38,7 +38,7 @@ void initSPI() {
     int bits_per_word = 8;
     int speed = 1000000;
 
-    int f_dev = open("/dev/spidev0.0", O_RDWR);
+    f_dev = open("/dev/spidev0.0", O_RDWR);
     if (f_dev < 0) {
         std::cout<< "ERR: Failed to open SPI communication on /dev/spidev0.0";
     }
