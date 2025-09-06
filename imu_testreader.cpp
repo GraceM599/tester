@@ -117,19 +117,19 @@ int setAccConfig(int config_num){
     switch(config_num){
         case 0: // range = +- 2 g
             acc_lsb_to_g = 0.061;
-            status = writeRegister(ACCEL_CONFIG_, 0b10100010);
+            status = writeRegister(ACCEL_CONFIG_, 0xA2);
             break;
         case 1: // range = +- 4 g
             acc_lsb_to_g = 0.122;
-            status = writeRegister(ACCEL_CONFIG_, 0b10101010);
+            status = writeRegister(ACCEL_CONFIG_, 0xAA);
             break;
         case 2: // range = +- 8 g
             acc_lsb_to_g = 0.244;
-            status = writeRegister(ACCEL_CONFIG_, 0b10101110);
+            status = writeRegister(ACCEL_CONFIG_, 0xAE);
             break;
         case 3: // range = +- 16 g
             acc_lsb_to_g = 0.488;
-            status = writeRegister(ACCEL_CONFIG_, 0b10100110);
+            status = writeRegister(ACCEL_CONFIG_, 0xA6);
             break;
         default: // error
             status = 1;
@@ -149,6 +149,7 @@ int setGyroConfig(int config_num){
             break;
         case 1:  // range = +- 500 deg/s
             gyro_lsb_to_degsec = 17.5;
+            std::cout << "At gyro case 2" << std::endl;
             status = writeRegister(GYRO_CONFIG_, 0xA4);
             break;
         case 2: // range = +- 1000 deg/s
@@ -172,6 +173,7 @@ void fetchData(){
     X = readRegister(0x29) << 8 | readRegister(0x28);
     Y = readRegister(0x2B) << 8 | readRegister(0x2A);
     Z = readRegister(0x2D)  << 8 | readRegister(0x2C);
+    std::cout << readRegister(0x29) << std::endl;
     float accX;
     float accY;
     float accZ;
@@ -205,14 +207,14 @@ void fetchData(){
 int main() {
     // TIP Press <shortcut actionId="RenameElement"/> when your caret is at the <b>lang</b> variable name to see how CLion can help you rename it.
     initSPI();
-    int acc_range = 0;
-    short gyro_range = 0;
+    int acc_range = 2;
+    short gyro_range = 2;
     //replace == with != ; broke just for testing
-    if (setAccConfig(0) != 0) {
+    if (setAccConfig(1) != 0) {
         std::cout << "Error while setting accelerometer config" << std::endl;
         return 0;
     }
-    if (setGyroConfig(0) != 0) {
+    if (setGyroConfig(1) != 0) {
         std::cout << "Error while setting gyroscope config" << std::endl;
         return 0;
     }
