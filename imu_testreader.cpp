@@ -109,6 +109,13 @@ int writeRegister(uint8_t register_addr, uint8_t value) {
 int setAccConfig(int config_num){
     int status;
     uint8_t ACCEL_CONFIG_ = 0x10;
+
+    //delete later
+    acc_lsb_to_g = 0.061;
+    status = writeRegister(ACCEL_CONFIG_, 0b10100010);
+
+
+
     switch(config_num){
         case 0: // range = +- 2 g
             acc_lsb_to_g = 0.061;
