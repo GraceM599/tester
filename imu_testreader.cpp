@@ -108,11 +108,9 @@ int writeRegister(uint8_t register_addr, uint8_t value) {
 
 int setAccConfig(int config_num){
     int status;
-    uint8_t ACCEL_CONFIG_ = 0x10;
+    uint8_t ACCEL_CONFIG_ = 0x54;
 
-    //delete later
-    acc_lsb_to_g = 0.061;
-    status = writeRegister(ACCEL_CONFIG_, 0b10100010);
+
 
 
 
@@ -143,23 +141,23 @@ int setAccConfig(int config_num){
 int setGyroConfig(int config_num){
     int status;
 
-    uint8_t GYRO_CONFIG_ = 0x11;
+    uint8_t GYRO_CONFIG_ = 0x5C;
     switch(config_num){
         case 0:  // range = +- 250 deg/s
             gyro_lsb_to_degsec = 8.75;
-            status = writeRegister(GYRO_CONFIG_, 0b10100000);
+            status = writeRegister(GYRO_CONFIG_, 0xA0);
             break;
         case 1:  // range = +- 500 deg/s
             gyro_lsb_to_degsec = 17.5;
-            status = writeRegister(GYRO_CONFIG_, 0b10100100);
+            status = writeRegister(GYRO_CONFIG_, 0xA4);
             break;
         case 2: // range = +- 1000 deg/s
             gyro_lsb_to_degsec = 35;
-            status = writeRegister(GYRO_CONFIG_, 0b10101000);
+            status = writeRegister(GYRO_CONFIG_, 0xA8);
             break;
         case 3: // range = +- 2000 deg/s
             gyro_lsb_to_degsec = 70;
-            status = writeRegister(GYRO_CONFIG_, 0b10101100);
+            status = writeRegister(GYRO_CONFIG_, 0xAC);
             break;
         default:
             status = 1;
@@ -210,11 +208,11 @@ int main() {
     int acc_range = 0;
     short gyro_range = 0;
     //replace == with != ; broke just for testing
-    if (setAccConfig(0) == 0) {
+    if (setAccConfig(0) != 0) {
         std::cout << "Error while setting accelerometer config" << std::endl;
         return 0;
     }
-    if (setGyroConfig(0) == 0) {
+    if (setGyroConfig(0) != 0) {
         std::cout << "Error while setting gyroscope config" << std::endl;
         return 0;
     }
