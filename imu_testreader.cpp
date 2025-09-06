@@ -202,12 +202,12 @@ int main() {
     initSPI();
     int acc_range = 0;
     short gyro_range = 0;
-
-    if (setAccConfig(0) != 0) {
+    //replace == with != ; broke just for testing
+    if (setAccConfig(0) == 0) {
         std::cout << "Error while setting accelerometer config" << std::endl;
         return 0;
     }
-    if (setGyroConfig(0) != 0) {
+    if (setGyroConfig(0) == 0) {
         std::cout << "Error while setting gyroscope config" << std::endl;
         return 0;
     }
