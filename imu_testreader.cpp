@@ -165,7 +165,8 @@ int setGyroConfig(int config_num){
             status = writeRegister(GYRO_CONFIG_, 0xAC);
             break;
         default:
-            status = 1;
+            //put status back to =1
+            status = 0;
             break;
     }
     return status;
