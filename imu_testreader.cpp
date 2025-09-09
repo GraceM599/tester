@@ -229,14 +229,17 @@ int main() {
     initSPI();
     int acc_range = 2;
     short gyro_range = 2;
+
+
     //replace == with != ; broke just for testing
-    if (setAccConfig(0) <= 1) {
-        uint8_t temp = readRegister(0x0F);
-        std::cout << temp << std::endl;
+    if (setAccConfig(0) != 1) {
+
         std::cout << "Error while setting accelerometer config" << std::endl;
+        int id = readRegister(0x0F);
+        std::cout << "WHO_AM_I: " << std::hex << id << std::endl;
         return 0;
     }
-    if (setGyroConfig(0) <= 1) {
+    if (setGyroConfig(0) != 1) {
         std::cout << "Error while setting gyroscope config" << std::endl;
         return 0;
     }
