@@ -122,8 +122,8 @@ int setAccConfig(int config_num){
         case 0: // range = +- 2 g
             acc_lsb_to_g = 0.061;
             std::cout << "made it to case 0" << std::endl;
-            uint8_t value = readRegister(0x0F);
-            std::cout << value << std::endl;
+            uint8_t temp = readRegister(0x0F);
+            std::cout << temp << std::endl;
             status = writeRegister(ACCEL_CONFIG_, 0x48);
             std::cout << "made it past case 0" << std::endl;
 
