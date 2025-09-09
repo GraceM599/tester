@@ -122,8 +122,7 @@ int setAccConfig(int config_num){
         case 0: // range = +- 2 g
             acc_lsb_to_g = 0.061;
             std::cout << "made it to case 0" << std::endl;
-            uint8_t temp = readRegister(0x0F);
-            std::cout << temp << std::endl;
+
             status = writeRegister(ACCEL_CONFIG_, 0x48);
             std::cout << "made it past case 0" << std::endl;
 
@@ -231,6 +230,8 @@ int main() {
     short gyro_range = 2;
     //replace == with != ; broke just for testing
     if (setAccConfig(0) != 0) {
+        uint8_t temp = readRegister(0x0F);
+        std::cout << temp << std::endl;
         std::cout << "Error while setting accelerometer config" << std::endl;
         return 0;
     }
