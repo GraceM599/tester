@@ -121,6 +121,7 @@ int setAccConfig(int config_num){
     switch(config_num){
         case 0: // range = +- 2 g
             acc_lsb_to_g = 0.061;
+            std::cout << "made it to case 0" << std::endl;
             status = writeRegister(ACCEL_CONFIG_, 0x48);
             break;
         case 1: // range = +- 4 g
