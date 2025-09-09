@@ -185,18 +185,28 @@ void fetchData(){
     float gyroY;
     float gyroZ;
 
-
+    double accXoffset = 0;
+    double accYoffset = 0;
+    double accZoffset = 0;
+    //replace 1 in accZ with !upsideDownMounting - upsideDownMounting
     accX = ((float)X) * acc_lsb_to_g / 1000 - accXoffset;
     accY = ((float)Y) * acc_lsb_to_g / 1000 - accYoffset;
-    accZ = (!upsideDownMounting - upsideDownMounting) * ((float)Z) * acc_lsb_to_g / 1000 - accZoffset;
+    accZ = (1) * ((float)Z) * acc_lsb_to_g / 1000 - accZoffset;
 
     X = readRegister(0x23) << 8 | readRegister(0x22);
     Y = readRegister(0x25) << 8 | readRegister(0x24);
     Z = readRegister(0x27) << 8 | readRegister(0x26);
 
+    //correcct code replaced w/o offset
+    /*
     gyroX = ((float)X) * gyro_lsb_to_degsec / 1000- gyroXoffset;
     gyroY = ((float)Y) * gyro_lsb_to_degsec / 1000 - gyroYoffset;
     gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000 - gyroZoffset;
+
+    */
+    gyroX = ((float)X) * gyro_lsb_to_degsec / 1000;
+    gyroY = ((float)Y) * gyro_lsb_to_degsec / 1000;
+    gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000;
 
     //print data
     std::cout << "Accel: X=" << accX
