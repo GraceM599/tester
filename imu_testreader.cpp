@@ -103,6 +103,7 @@ int writeRegister(uint8_t register_addr, uint8_t value) {
     xfer[0].len = (__u32)sizeof(data); // length of data to write
 
     int retv = ioctl(f_dev, SPI_IOC_MESSAGE(1), &xfer);
+
     if (retv < 0)
     {
         std::cout << "error in spi_write_reg8(): ioctl(SPI_IOC_MESSAGE(2)) return" <<std::endl;
@@ -124,7 +125,7 @@ int setAccConfig(int config_num){
             std::cout << "made it to case 0" << std::endl;
 
             status = writeRegister(ACCEL_CONFIG_, 0x48);
-            std::cout << "made it past case 0" << std::endl;
+            std::cout << status << std::endl;
 
             break;
         case 1: // range = +- 4 g
