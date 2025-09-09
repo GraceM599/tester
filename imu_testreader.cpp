@@ -229,7 +229,7 @@ int main() {
     int acc_range = 2;
     short gyro_range = 2;
     //replace == with != ; broke just for testing
-    if (setAccConfig(0) != 0) {
+    if (setAccConfig(0) == 0) {
         uint8_t temp = readRegister(0x0F);
         std::cout << temp << std::endl;
         std::cout << "Error while setting accelerometer config" << std::endl;
