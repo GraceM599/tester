@@ -5,189 +5,265 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <string.h>
+#include <cmath>
 #include <linux/spi/spidev.h>
 #include <cstdint>
+//linux is on raspi
 
-// ========================
-// L3M6DS3 IMU SPI PINS
-// ========================
-// SDA  - MOSI (Data into IMU)
-// DO   - MISO (Data out from IMU)
-// SCL  - SCLK (SPI Clock)
-// CS   - CE0 (Chip Select for SPI0 on Raspberry Pi)
-// VCC  - 3.3V
-// GND  - Ground
-//
-// Raspberry Pi SPI0 GPIO pins (40-pin header):
-// MOSI -> Pin 19
-// MISO -> Pin 21
-// SCLK -> Pin 23
-// CE0  -> Pin 24
-// 3.3V -> Pin 1 or 17
-// GND  -> Pin 6, 9, or 14
-//
-// SPI Notes:
-// - SPI Mode 3 (CPOL=1, CPHA=1) as per datasheet
-// - 8 bits per word
-// - Max speed 10 MHz (we use 1 MHz for stability)
-// ========================
+//L3M6DS3 pins
+// Serial Data pin acts as SDI when SPI is used
+// SCL (Serial CLick) pin for SPI clock
+//CS (Chip Select) pin
+//DO pin for serial data output
 
-int f_dev;
+//PI pins
+//MOSI (19, MOSI0)
+//MISO (21, MISO0)
+//SCLK (Serial CLock, 23, SCLK0)
+//CS (Either 24 or 26)
+
+//run if no workie
+//int id = readRegister(0x0F);
+//std::cout << "WHO_AM_I: " << std::hex << id << std::endl;
+
 double acc_lsb_to_g;
+int f_dev;
 double gyro_lsb_to_degsec;
 
-// Initialize SPI
+// SDA - MOSI  ; DO - MISO0  ; SCL - SCLK0  ; CS - CE0
+
 void initSPI() {
+
+    uint8_t mode = SPI_MODE_0;  // Changed from SPI_MODE_3 to SPI_MODE_0
+
+    int bits_per_word = 8;
+    int speed = 1000000;  // Increased speed from 100kHz to 1MHz
+
     f_dev = open("/dev/spidev0.0", O_RDWR);
     if (f_dev < 0) {
-        std::cerr << "ERR: Failed to open SPI device!" << std::endl;
-        exit(1);
+        std::cout<< "ERR: Failed to open SPI communication on /dev/spidev0.0";
     }
 
-    uint8_t mode = SPI_MODE_3;      // CPOL=1, CPHA=1
-    uint8_t bits = 8;               // 8 bits per word
-    uint32_t speed = 1000000;       // 1 MHz for testing
 
-    // Configure SPI parameters
-    if(ioctl(f_dev, SPI_IOC_WR_MODE, &mode) < 0) { close(f_dev); exit(1);}
-    if(ioctl(f_dev, SPI_IOC_WR_BITS_PER_WORD, &bits) < 0) { close(f_dev); exit(1);}
-    if(ioctl(f_dev, SPI_IOC_WR_MAX_SPEED_HZ, &speed) < 0) { close(f_dev); exit(1);}
+    //config SPI parameters
+    if(ioctl(f_dev, SPI_IOC_WR_MODE, &mode) < 0){
+        close(f_dev);
+    }
+    if (ioctl(f_dev, SPI_IOC_RD_MODE, &mode) < 0) {
+        close(f_dev);
+    }
+    /* Set bits per word*/
+    if (ioctl(f_dev, SPI_IOC_WR_BITS_PER_WORD, &bits_per_word) < 0) {
+        close(f_dev);
+    }
+    if (ioctl(f_dev, SPI_IOC_RD_BITS_PER_WORD, &bits_per_word) < 0) {
+        close(f_dev);
+    }
+
+    /* Set SPI speed*/
+    if (ioctl(f_dev, SPI_IOC_WR_MAX_SPEED_HZ, &speed) < 0) {
+        close(f_dev);
+    }
+    if (ioctl(f_dev, SPI_IOC_RD_MAX_SPEED_HZ, &speed) < 0) {
+        close(f_dev);
+    }
 }
 
-// Read a single 8-bit register
-uint8_t readRegister(uint8_t reg) {
-    uint8_t tx[2] = { reg | 0x80, 0x00 }; // address byte (MSB=1 for read) + dummy
-    uint8_t rx[2] = {0};
+//read register function
+int readRegister(uint8_t register_add){
+    struct spi_ioc_transfer xfer[1] = {0};
 
-    struct spi_ioc_transfer tr = {0};
-    tr.tx_buf = (unsigned long)tx;
-    tr.rx_buf = (unsigned long)rx;
-    tr.len = 2;
-    tr.speed_hz = 1000000;
-    tr.bits_per_word = 8;
+    // Write message for register address
+    uint8_t reg_addr = register_add | 0x80;  // Set read bit
+    uint8_t data[2];
+    data[0] = reg_addr;
+    data[1] = 0x00;  // Changed from 0x05 to 0x00 - don't overwrite response
+    xfer[0].tx_buf = (__u64)data;      // output buffer
+    xfer[0].rx_buf = (__u64)data;      // input buffer
+    xfer[0].len = (__u32)sizeof(data);  // length of data to read
 
-    int ret = ioctl(f_dev, SPI_IOC_MESSAGE(1), &tr);
-    if (ret < 1) {
-        std::cerr << "SPI read failed!" << std::endl;
-        return 0;
+    int retv = ioctl(f_dev, SPI_IOC_MESSAGE(1), &xfer);
+    if (retv < 0)
+    {
+        std::cout << "error in spi_read_reg8(): ioctl(SPI_IOC_MESSAGE(1))" << std::endl;
+        return -1;
     }
-
-    return rx[1]; // second byte contains actual register value
+    // Debug output - remove after testing
+    std::cout << "Read reg 0x" << std::hex << (int)register_add << ": 0x" << (int)data[1] << std::dec << std::endl;
+    return data[1];
 }
 
-// Write a single 8-bit register
-int writeRegister(uint8_t reg, uint8_t value) {
-    uint8_t tx[2] = { reg & 0x7F, value }; // MSB=0 for write
-    struct spi_ioc_transfer tr = {0};
-    tr.tx_buf = (unsigned long)tx;
-    tr.rx_buf = 0;
-    tr.len = 2;
-    tr.speed_hz = 1000000;
-    tr.bits_per_word = 8;
+int writeRegister(uint8_t register_addr, uint8_t value) {
+    struct spi_ioc_transfer xfer[1] = {0};
 
-    int ret = ioctl(f_dev, SPI_IOC_MESSAGE(1), &tr);
-    if (ret < 1) {
-        std::cerr << "SPI write failed!" << std::endl;
+    // Write message for register address
+    uint8_t data[2];
+    data[0] = register_addr;
+    data[1] = value;
+    xfer[0].tx_buf = (__u64)data;      // output buffer
+    xfer[0].rx_buf = (__u64)data;      // input buffer
+    xfer[0].len = (__u32)sizeof(data); // length of data to write
+
+    int retv = ioctl(f_dev, SPI_IOC_MESSAGE(1), &xfer);
+
+    if (retv < 0)
+    {
+        std::cout << "error in spi_write_reg8(): ioctl(SPI_IOC_MESSAGE(2)) return" <<std::endl;
     }
-    return ret;
+    return retv;
 }
 
-// ========================
-// Accelerometer Configuration
-// ========================
-int setAccConfig(int config_num) {
-    int status = 0;
-    uint8_t ACCEL_CONFIG_ = 0x10;
+int setAccConfig(int config_num){
+    int status;
+    uint8_t ACCEL_CONFIG_ = 0x10;  // LSM6DS3 accelerometer config register
 
-    switch(config_num) {
-        case 0: acc_lsb_to_g = 0.061; status = writeRegister(ACCEL_CONFIG_, 0x20); break; // ±2g
-        case 1: acc_lsb_to_g = 0.122; status = writeRegister(ACCEL_CONFIG_, 0xAA); break; // ±4g
-        case 2: acc_lsb_to_g = 0.244; status = writeRegister(ACCEL_CONFIG_, 0xAE); break; // ±8g
-        case 3: acc_lsb_to_g = 0.488; status = writeRegister(ACCEL_CONFIG_, 0xA6); break; // ±16g
-        default: status = -1; break;
+    // First enable the accelerometer by writing to CTRL1_XL (0x10)
+    switch(config_num){
+        case 0: // range = +- 2 g, ODR = 104 Hz
+            acc_lsb_to_g = 0.061;
+            std::cout << "made it to case 0" << std::endl;
+
+            // 0x40 = 0100 0000 = ODR 104Hz, FS ±2g, BW determined by ODR
+            status = writeRegister(ACCEL_CONFIG_, 0x40);
+            std::cout << "Write status: " << status << std::endl;
+
+            break;
+        case 1: // range = +- 4 g
+            acc_lsb_to_g = 0.122;
+            status = writeRegister(ACCEL_CONFIG_, 0xAA);
+            break;
+        case 2: // range = +- 8 g
+            acc_lsb_to_g = 0.244;
+            status = writeRegister(ACCEL_CONFIG_, 0xAE);
+            break;
+        case 3: // range = +- 16 g
+            acc_lsb_to_g = 0.488;
+            status = writeRegister(ACCEL_CONFIG_, 0xA6);
+            break;
+        default: // error
+            status = 1;
+            break;
     }
-
     return status;
 }
 
-// ========================
-// Gyroscope Configuration
-// ========================
-int setGyroConfig(int config_num) {
-    int status = 0;
-    uint8_t GYRO_CONFIG_ = 0x11;
+int setGyroConfig(int config_num){
+    int status;
 
-    switch(config_num) {
-        case 0: gyro_lsb_to_degsec = 8.75; status = writeRegister(GYRO_CONFIG_, 0x20); break;   // ±250 dps
-        case 1: gyro_lsb_to_degsec = 17.5; status = writeRegister(GYRO_CONFIG_, 0xA4); break;  // ±500 dps
-        case 2: gyro_lsb_to_degsec = 35; status = writeRegister(GYRO_CONFIG_, 0xA8); break;    // ±1000 dps
-        case 3: gyro_lsb_to_degsec = 70; status = writeRegister(GYRO_CONFIG_, 0xAC); break;    // ±2000 dps
-        default: status = -1; break;
+    uint8_t GYRO_CONFIG_ = 0x11;  // LSM6DS3 gyroscope config register CTRL2_G
+    switch(config_num){
+        case 0:  // range = +- 250 deg/s, ODR = 104 Hz
+            gyro_lsb_to_degsec = 8.75;
+            // 0x40 = 0100 0000 = ODR 104Hz, FS ±250 dps
+            status = writeRegister(GYRO_CONFIG_, 0x40);
+            break;
+        case 1:  // range = +- 500 deg/s
+            gyro_lsb_to_degsec = 17.5;
+            std::cout << "At gyro case 2" << std::endl;
+            status = writeRegister(GYRO_CONFIG_, 0xA4);
+            break;
+        case 2: // range = +- 1000 deg/s
+            gyro_lsb_to_degsec = 35;
+            status = writeRegister(GYRO_CONFIG_, 0xA8);
+            break;
+        case 3: // range = +- 2000 deg/s
+            gyro_lsb_to_degsec = 70;
+            status = writeRegister(GYRO_CONFIG_, 0xAC);
+            break;
+        default:
+            //put status back to =1
+            status = 0;
+            break;
     }
-
     return status;
 }
 
-// ========================
-// Fetch accelerometer and gyroscope data
-// ========================
-void fetchData() {
+void fetchData(){
+    //temporarily changed x-> nx to avoid non defined errors
     int16_t X, Y, Z;
+    X = readRegister(0x29) << 8 | readRegister(0x28);
+    Y = readRegister(0x2B) << 8 | readRegister(0x2A);
+    Z = readRegister(0x2D)  << 8 | readRegister(0x2C);
+    std::cout << readRegister(0x29) << std::endl;
+    float accX;
+    float accY;
+    float accZ;
+    float gyroX;
+    float gyroY;
+    float gyroZ;
 
-    // Read accelerometer registers (X, Y, Z)
-    X = (int16_t)(readRegister(0x29) << 8 | readRegister(0x28));
-    Y = (int16_t)(readRegister(0x2B) << 8 | readRegister(0x2A));
-    Z = (int16_t)(readRegister(0x2D) << 8 | readRegister(0x2C));
+    double accXoffset = 0;
+    double accYoffset = 0;
+    double accZoffset = 0;
+    //replace 1 in accZ with !upsideDownMounting - upsideDownMounting
+    accX = ((float)X) * acc_lsb_to_g / 1000 - accXoffset;
+    accY = ((float)Y) * acc_lsb_to_g / 1000 - accYoffset;
+    accZ = (1) * ((float)Z) * acc_lsb_to_g / 1000 - accZoffset;
 
-    float accX = ((float)X) * acc_lsb_to_g / 1000;
-    float accY = ((float)Y) * acc_lsb_to_g / 1000;
-    float accZ = ((float)Z) * acc_lsb_to_g / 1000;
+    X = readRegister(0x23) << 8 | readRegister(0x22);
+    Y = readRegister(0x25) << 8 | readRegister(0x24);
+    Z = readRegister(0x27) << 8 | readRegister(0x26);
 
-    // Read gyroscope registers (X, Y, Z)
-    X = (int16_t)(readRegister(0x23) << 8 | readRegister(0x22));
-    Y = (int16_t)(readRegister(0x25) << 8 | readRegister(0x24));
-    Z = (int16_t)(readRegister(0x27) << 8 | readRegister(0x26));
+    //correcct code replaced w/o offset
+    /*
+    gyroX = ((float)X) * gyro_lsb_to_degsec / 1000- gyroXoffset;
+    gyroY = ((float)Y) * gyro_lsb_to_degsec / 1000 - gyroYoffset;
+    gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000 - gyroZoffset;
 
-    float gyroX = ((float)X) * gyro_lsb_to_degsec / 1000;
-    float gyroY = ((float)Y) * gyro_lsb_to_degsec / 1000;
-    float gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000;
+    */
+    gyroX = ((float)X) * gyro_lsb_to_degsec / 1000;
+    gyroY = ((float)Y) * gyro_lsb_to_degsec / 1000;
+    gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000;
 
-    std::cout << "Accel: X=" << accX << "g, Y=" << accY << "g, Z=" << accZ << "g | "
-              << "Gyro: X=" << gyroX << "dps, Y=" << gyroY << "dps, Z=" << gyroZ << "dps"
-              << std::endl;
+    //print data
+    std::cout << "Accel: X=" << accX
+                  << " g, Y=" << accY
+                  << " g, Z=" << accZ << " g | "
+                  << "Gyro: X=" << gyroX
+                  << " dps, Y=" << gyroY
+                  << " dps, Z=" << gyroZ << " dps"
+                  << std::endl;
 }
 
-// ========================
-// Main
-// ========================
 int main() {
+
     initSPI();
-
-    // Read WHO_AM_I register (0x0F) to verify IMU is connected
-    uint8_t id = readRegister(0x0F);
-    std::cout << "WHO_AM_I: 0x" << std::hex << (int)id << std::endl;
-    if (id != 0x69) {
-        std::cerr << "IMU not detected!" << std::endl;
-        return 1;
+    
+    // First, check if the sensor is responding
+    std::cout << "Checking sensor communication..." << std::endl;
+    int id = readRegister(0x0F);  // WHO_AM_I register
+    std::cout << "WHO_AM_I: 0x" << std::hex << id << std::dec << std::endl;
+    
+    if (id != 0x69) {  // LSM6DS3 should return 0x69
+        std::cout << "ERROR: Sensor not detected! Expected 0x69, got 0x" << std::hex << id << std::dec << std::endl;
+        std::cout << "Check your wiring and SPI configuration." << std::endl;
+        close(f_dev);
+        return -1;
     }
-
-    // Set accelerometer and gyroscope configuration
-    if (setAccConfig(0) < 0) {
-        std::cerr << "Error setting accelerometer config!" << std::endl;
-        return 1;
+    
+    std::cout << "Sensor detected successfully!" << std::endl;
+    
+    // Configure accelerometer
+    if (setAccConfig(0) != 0) {
+        std::cout << "Error while setting accelerometer config" << std::endl;
+        close(f_dev);
+        return -1;
     }
-    if (setGyroConfig(0) < 0) {
-        std::cerr << "Error setting gyroscope config!" << std::endl;
-        return 1;
+    if (setGyroConfig(0) != 0) {
+        std::cout << "Error while setting gyroscope config" << std::endl;
+        close(f_dev);
+        return -1;
     }
-
-    // Fetch and print data 100 times
-    for(int i = 0; i < 100; i++) {
+    
+    std::cout << "Configuration complete. Starting data acquisition..." << std::endl;
+    
+    for (int i = 0; i<100; i++){
         fetchData();
-        usleep(100000); // 100 ms delay
+        usleep(100000);  // 100ms delay
     }
-
+    
     close(f_dev);
     return 0;
 }
