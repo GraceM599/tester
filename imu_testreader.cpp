@@ -81,7 +81,7 @@ int readRegister(uint8_t register_add){
     tr.tx_buf = (unsigned long)tx;
     tr.rx_buf = (unsigned long)rx;
     tr.len = 2;
-    tr.delay_usecs = 0;
+    tr.delay_usecs = 3;
     tr.speed_hz = 1000000;  // 1 MHz
     tr.bits_per_word = 8;
 
