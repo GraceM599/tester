@@ -13,7 +13,7 @@
 #include <cstdint>
 //linux is on raspi
 
-//LSM6DSOX pins
+//L3M6DS3 pins
 // Serial Data pin acts as SDI when SPI is used
 // SCL (Serial CLick) pin for SPI clock
 //CS (Chip Select) pin
@@ -37,10 +37,10 @@ double gyro_lsb_to_degsec;
 
 void initSPI() {
 
-    uint8_t mode = SPI_MODE_0;
+    uint8_t mode = SPI_MODE_3;
 
     int bits_per_word = 8;
-    int speed = 1000000;
+    int speed = 900000;
 
     f_dev = open("/dev/spidev0.0", O_RDWR);
     if (f_dev < 0) {
@@ -124,7 +124,7 @@ int setAccConfig(int config_num){
             acc_lsb_to_g = 0.061;
             std::cout << "made it to case 0" << std::endl;
 
-            status = writeRegister(ACCEL_CONFIG_, 0x48);
+            status = writeRegister(ACCEL_CONFIG_, 0x20);
             std::cout << status << std::endl;
 
             break;
@@ -154,7 +154,7 @@ int setGyroConfig(int config_num){
     switch(config_num){
         case 0:  // range = +- 250 deg/s
             gyro_lsb_to_degsec = 8.75;
-            status = writeRegister(GYRO_CONFIG_, 0x48);
+            status = writeRegister(GYRO_CONFIG_, 0x20);
             break;
         case 1:  // range = +- 500 deg/s
             gyro_lsb_to_degsec = 17.5;
@@ -225,21 +225,22 @@ void fetchData(){
 }
 
 int main() {
-    // TIP Press <shortcut actionId="RenameElement"/> when your caret is at the <b>lang</b> variable name to see how CLion can help you rename it.
+
     initSPI();
     int acc_range = 2;
     short gyro_range = 2;
 
 
     //replace == with != ; broke just for testing
-    if (setAccConfig(0) != 1) {
+    if (setAccConfig(0) != 0) {
 
         std::cout << "Error while setting accelerometer config" << std::endl;
+        //should return 0x69
         int id = readRegister(0x0F);
         std::cout << "WHO_AM_I: " << std::hex << id << std::endl;
         return 0;
     }
-    if (setGyroConfig(0) != 1) {
+    if (setGyroConfig(0) != 0) {
         std::cout << "Error while setting gyroscope config" << std::endl;
         return 0;
     }
