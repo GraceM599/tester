@@ -74,20 +74,25 @@ void initSPI() {
 
 //read register function
 int readRegister(uint8_t register_add){
-    struct spi_ioc_transfer xfer[1] = {0};
-    // Write message for register address
-    uint8_t reg_addr = register_add | 0x80;
-    uint8_t data[2];
-    data[0] = reg_addr;
-    data[1] = 0x00;
-    xfer[0].tx_buf = (__u64)data;      // output buffer
-    xfer[0].rx_buf = (__u64)data;      // input buffer
-    xfer[0].len = (__u32)sizeof(data);  // length of data to read
-    int retv = ioctl(f_dev, SPI_IOC_MESSAGE(1), &xfer);
-    if (retv < 0){
-        std::cout << "error in spi_read_reg8(): ioctl(SPI_IOC_MESSAGE(2))" << std::endl;
+    uint8_t tx[2] = { reg_addr | 0x80, 0x00 };
+    uint8_t rx[2] = { 0 };
+
+    struct spi_ioc_transfer tr = {0};
+    tr.tx_buf = (unsigned long)tx;
+    tr.rx_buf = (unsigned long)rx;
+    tr.len = 2;
+    tr.delay_usecs = 0;
+    tr.speed_hz = 1000000;  // 1 MHz
+    tr.bits_per_word = 8;
+
+    int ret = ioctl(f_dev, SPI_IOC_MESSAGE(1), &tr);
+    if (ret < 1) {
+        std::cout << "SPI Read Error!" << std::endl;
+        return 0;
     }
-    return data[1];
+
+    return rx[1];  // second byte contains register value
+
 
 }
 
