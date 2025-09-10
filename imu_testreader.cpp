@@ -40,7 +40,7 @@ void initSPI() {
     uint8_t mode = SPI_MODE_3;
 
     int bits_per_word = 8;
-    int speed = 900000;
+    int speed = 100000;
 
     f_dev = open("/dev/spidev0.0", O_RDWR);
     if (f_dev < 0) {
@@ -82,7 +82,7 @@ int readRegister(uint8_t register_add){
     tr.rx_buf = (unsigned long)rx;
     tr.len = 2;
     tr.delay_usecs = 3;
-    tr.speed_hz = 1000000;  // 1 MHz
+    tr.speed_hz = 100000;  // 1 MHz
     tr.bits_per_word = 8;
 
     int ret = ioctl(f_dev, SPI_IOC_MESSAGE(1), &tr);
