@@ -90,6 +90,7 @@ int readRegister(uint8_t register_add){
     {
         std::cout << "error in spi_read_reg8(): ioctl(SPI_IOC_MESSAGE(2))" << std::endl;
     }
+    std::cout << data[0] << data[1] << std::endl;
     return data[1];
 }
 
