@@ -74,7 +74,7 @@ void initSPI() {
 
 //read register function
 int readRegister(uint8_t register_add){
-    uint8_t tx[2] = { reg_addr | 0x80, 0x00 };
+    uint8_t tx[2] = { register_add | 0x80, 0x00 };
     uint8_t rx[2] = { 0 };
 
     struct spi_ioc_transfer tr = {0};
