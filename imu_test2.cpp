@@ -121,12 +121,12 @@ int setAccConfig(int config_num){
 
     // First enable the accelerometer by writing to CTRL1_XL (0x10)
     switch(config_num){
-        case 0: // range = +- 2 g, ODR = 104 Hz
-            acc_lsb_to_g = 0.061;
+        case 0: // range = +- 16 g (matching NASA working code)
+            acc_lsb_to_g = 0.488;  // 16g range scaling
             std::cout << "made it to case 0" << std::endl;
 
-            // 0x40 = 0100 0000 = ODR 104Hz, FS ±2g, BW determined by ODR
-            status = writeRegister(ACCEL_CONFIG_, 0x40);
+            // 0x54 = 0101 0100 = exactly from working NASA I2C code (16g range, normal mode)
+            status = writeRegister(ACCEL_CONFIG_, 0x54);
             std::cout << "Write status: " << status << std::endl;
 
             break;
@@ -154,10 +154,10 @@ int setGyroConfig(int config_num){
 
     uint8_t GYRO_CONFIG_ = 0x11;  // LSM6DS3 gyroscope config register CTRL2_G
     switch(config_num){
-        case 0:  // range = +- 250 deg/s, ODR = 104 Hz
-            gyro_lsb_to_degsec = 8.75;
-            // 0x40 = 0100 0000 = ODR 104Hz, FS ±250 dps
-            status = writeRegister(GYRO_CONFIG_, 0x40);
+        case 0:  // range = +- 500 deg/s (matching NASA working code)
+            gyro_lsb_to_degsec = 17.5;  // 500 dps range scaling
+            // 0x5C = 0101 1100 = exactly from working NASA I2C code (500 dps range, normal mode)
+            status = writeRegister(GYRO_CONFIG_, 0x5C);
             break;
         case 1:  // range = +- 500 deg/s
             gyro_lsb_to_degsec = 17.5;
@@ -197,10 +197,10 @@ void fetchData(){
     double accXoffset = 0;
     double accYoffset = 0;
     double accZoffset = 0;
-    //replace 1 in accZ with !upsideDownMounting - upsideDownMounting
-    accX = ((float)X) * acc_lsb_to_g / 1000 - accXoffset;
-    accY = ((float)Y) * acc_lsb_to_g / 1000 - accYoffset;
-    accZ = (1) * ((float)Z) * acc_lsb_to_g / 1000 - accZoffset;
+    // Use NASA working code conversion method (16g range)
+    accX = (X / 32768.0f) * 16.0f - accXoffset;
+    accY = (Y / 32768.0f) * 16.0f - accYoffset;
+    accZ = (Z / 32768.0f) * 16.0f - accZoffset;
 
     X = readRegister(0x23) << 8 | readRegister(0x22);
     Y = readRegister(0x25) << 8 | readRegister(0x24);
@@ -213,9 +213,10 @@ void fetchData(){
     gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000 - gyroZoffset;
 
     */
-    gyroX = ((float)X) * gyro_lsb_to_degsec / 1000;
-    gyroY = ((float)Y) * gyro_lsb_to_degsec / 1000;
-    gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000;
+    // Use NASA working code conversion method (500 dps range)
+    gyroX = (X / 32768.0f) * 500.0f;
+    gyroY = (Y / 32768.0f) * 500.0f;
+    gyroZ = (Z / 32768.0f) * 500.0f;
 
     //print data
     std::cout << "Accel: X=" << accX
@@ -236,14 +237,21 @@ int main() {
     int id = readRegister(0x0F);  // WHO_AM_I register
     std::cout << "WHO_AM_I: 0x" << std::hex << id << std::dec << std::endl;
     
-    if (id != 0x69) {  // LSM6DS3 should return 0x69
-        std::cout << "ERROR: Sensor not detected! Expected 0x69, got 0x" << std::hex << id << std::dec << std::endl;
+    // Based on working NASA code - they expect 0x6A, not 0x69!
+    if (id != 0x6A && id != 0x69 && id != 0x6C) {  // Try multiple valid WHO_AM_I values
+        std::cout << "ERROR: Sensor not detected! Expected 0x6A/0x69/0x6C, got 0x" << std::hex << id << std::dec << std::endl;
         std::cout << "Check your wiring and SPI configuration." << std::endl;
         close(f_dev);
         return -1;
     }
     
-    std::cout << "Sensor detected successfully!" << std::endl;
+    if (id == 0x6A) {
+        std::cout << "🎉 LSM6DS3 sensor detected successfully (WHO_AM_I: 0x6A)!" << std::endl;
+    } else if (id == 0x69) {
+        std::cout << "🎉 LSM6DS3/LSM6DS33 sensor detected successfully (WHO_AM_I: 0x69)!" << std::endl;
+    } else if (id == 0x6C) {
+        std::cout << "🎉 LSM6DSO sensor detected successfully (WHO_AM_I: 0x6C)!" << std::endl;
+    }
     
     // Configure accelerometer
     if (setAccConfig(0) != 0) {
