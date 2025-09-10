@@ -206,13 +206,6 @@ void fetchData(){
     Y = readRegister(0x25) << 8 | readRegister(0x24);
     Z = readRegister(0x27) << 8 | readRegister(0x26);
 
-    //correcct code replaced w/o offset
-    /*
-    gyroX = ((float)X) * gyro_lsb_to_degsec / 1000- gyroXoffset;
-    gyroY = ((float)Y) * gyro_lsb_to_degsec / 1000 - gyroYoffset;
-    gyroZ = ((float)Z) * gyro_lsb_to_degsec / 1000 - gyroZoffset;
-
-    */
     // Use NASA working code conversion method (500 dps range)
     gyroX = (X / 32768.0f) * 500.0f;
     gyroY = (Y / 32768.0f) * 500.0f;
